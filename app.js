@@ -172,7 +172,7 @@ function updateApp() {
   ].join('\n');
 
   drawStar(starCanvas, xNow, yNow, state.p, state.u1, state.u2, state.time, FNow);
-  drawCurve(curveCanvas, currentCurve.t, currentCurve.Fld, currentCurve.Funiform);
+  drawCurve(curveCanvas, currentCurve.t, currentCurve.Fld, currentCurve.Funiform, state.time, FNow);
   drawBrightness(brightnessCanvas, state.u1, state.u2);
 }
 
@@ -352,7 +352,7 @@ function drawStar(canvas, xPlanet, yPlanet, p, u1, u2, tNow, FNow) {
   drawTitle(ctx, `t = ${tNow.toFixed(4)} d, flux = ${FNow.toFixed(5)}`);
 }
 
-function drawCurve(canvas, t, Fld, Funiform) {
+function drawCurve(canvas, t, Fld, Funiform, tNow, FNow) {
   const ctx = prepareCanvas(canvas);
   const { width, height } = canvas;
   ctx.clearRect(0, 0, width, height);
@@ -371,6 +371,22 @@ function drawCurve(canvas, t, Fld, Funiform) {
 
   drawLine(ctx, t, Funiform, map, 'rgba(255, 209, 102, 0.95)', 2, [6, 7]);
   drawLine(ctx, t, Fld, map, 'rgba(124, 199, 255, 1)', 2.5, []);
+
+  // Current-time mark: red point only, without guide line, glow ring, or label.
+  if (Number.isFinite(tNow) && Number.isFinite(FNow)) {
+    const dpr = window.devicePixelRatio || 1;
+    const x = map.x(tNow);
+    const y = map.y(FNow);
+    ctx.save();
+    ctx.fillStyle = '#ff3b4f';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.4 * dpr;
+    ctx.beginPath();
+    ctx.arc(x, y, 7.5 * dpr, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
 
   drawLegend(ctx, pad.left + 12, pad.top + 10, [
     ['Limb darkened', 'rgba(124, 199, 255, 1)'],
