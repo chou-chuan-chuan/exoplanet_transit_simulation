@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exoplanet Transit Visual Simulator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>Exoplanet Transit Visual Simulator</h1>
+      <p>Interactive limb-darkened transit model adapted from the MATLAB app.</p>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section class="control-card">
+      <h2>Simulation Controls</h2>
+
+      <label class="control-row select-row">
+        <span>Parameter set</span>
+        <select id="caseSelect"></select>
+      </label>
+
+      <div id="controls"></div>
+
+      <div class="button-row">
+        <button id="playBtn" type="button">Play animation</button>
+        <button id="resetBtn" type="button">Reset to selected case</button>
+      </div>
+
+      <div id="status" class="status">Status: ready</div>
+      <pre id="paramBox" class="param-box">Parameters will appear here.</pre>
+
+      <p class="note">
+        Tip: Larger inclination means the planet crosses closer to the stellar center.
+        Smaller inclination gives a larger impact parameter.
+      </p>
+    </section>
+
+    <section class="plot-grid">
+      <article class="plot-card large-card">
+        <h2>Visual transit geometry</h2>
+        <canvas id="starCanvas"></canvas>
+      </article>
+
+      <article class="plot-card">
+        <h2>Transit light curve</h2>
+        <canvas id="curveCanvas"></canvas>
+      </article>
+
+      <article class="plot-card">
+        <h2>Limb-darkening profile</h2>
+        <canvas id="brightnessCanvas"></canvas>
+      </article>
+    </section>
+  </main>
+
+  <footer class="footer-note">
+    <span>Model: quadratic limb darkening and annulus integration.</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

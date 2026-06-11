@@ -1,0 +1,290 @@
+:root {
+  --bg: #09111f;
+  --card: #111b2e;
+  --card-2: #14213a;
+  --text: #f4f7fb;
+  --muted: #aeb9cc;
+  --accent: #7cc7ff;
+  --accent-2: #ffd166;
+  --danger: #ff7b7b;
+  --border: rgba(255, 255, 255, 0.12);
+  --shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: radial-gradient(circle at top left, #1f365e 0, var(--bg) 42%, #050914 100%);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-header {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 18px 12px;
+}
+
+.app-header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.55rem, 3.8vw, 2.55rem);
+  letter-spacing: -0.03em;
+}
+
+.app-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.app-shell {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  padding: 16px 18px 20px;
+  display: grid;
+  grid-template-columns: 390px 1fr;
+  gap: 18px;
+}
+
+.control-card,
+.plot-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+.control-card {
+  padding: 18px;
+  align-self: start;
+  position: sticky;
+  top: 16px;
+}
+
+.control-card h2,
+.plot-card h2 {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+}
+
+.select-row,
+.control-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 82px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 13px;
+}
+
+.select-row {
+  grid-template-columns: 112px 1fr;
+}
+
+.control-row span:first-child,
+.select-row span:first-child {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.value-label {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text);
+}
+
+select,
+input[type="range"],
+button {
+  width: 100%;
+}
+
+select {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--card-2);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
+input[type="range"] {
+  accent-color: var(--accent);
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+button {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 13px;
+  background: linear-gradient(135deg, var(--accent), #94f0ff);
+  color: #05101f;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+button:nth-child(2) {
+  background: linear-gradient(135deg, #ffe49a, var(--accent-2));
+}
+
+button:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.status {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+  font-weight: 800;
+}
+
+.status.warning {
+  color: var(--danger);
+}
+
+.param-box {
+  margin: 12px 0 0;
+  padding: 12px;
+  min-height: 108px;
+  overflow: auto;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.32);
+  color: #e7f2ff;
+  border: 1px solid var(--border);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.note,
+.footer-note {
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 0.92rem;
+}
+
+.note {
+  margin: 12px 0 0;
+}
+
+.plot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(300px, 1fr) minmax(260px, 0.78fr);
+  gap: 18px;
+}
+
+.plot-card {
+  padding: 16px;
+  min-width: 0;
+  min-height: 260px;
+}
+
+.large-card {
+  grid-row: 1 / span 2;
+}
+
+canvas {
+  width: 100%;
+  height: calc(100% - 34px);
+  min-height: 230px;
+  display: block;
+  border-radius: 16px;
+  background: rgba(3, 6, 14, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.large-card canvas {
+  min-height: 560px;
+}
+
+/* Keep the visual transit geometry canvas in a true 1:1 square ratio. */
+#starCanvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  max-height: 620px;
+  margin: 0 auto;
+}
+
+/* Keep the transit light curve canvas in a true 1:1 square ratio too. */
+#curveCanvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+}
+
+.footer-note {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  padding: 0 18px 24px;
+}
+
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .control-card {
+    position: static;
+  }
+
+  .plot-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .large-card {
+    grid-row: auto;
+  }
+
+  .large-card canvas {
+    min-height: 380px;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell,
+  .app-header,
+  .footer-note {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .control-card,
+  .plot-card {
+    border-radius: 18px;
+    padding: 14px;
+  }
+
+  .control-row {
+    grid-template-columns: 78px 1fr 72px;
+    gap: 8px;
+  }
+
+  .select-row {
+    grid-template-columns: 1fr;
+  }
+
+  canvas,
+  .large-card canvas {
+    min-height: 300px;
+  }
+}
