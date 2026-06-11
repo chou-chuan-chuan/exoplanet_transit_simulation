@@ -47,7 +47,7 @@ let animationId = null;
 let currentCurve = null;
 let redrawScheduled = false;
 
-const ANIMATION_DURATION_MS = 6500; // Slower animation so the light-curve marker stays visible longer.
+const ANIMATION_DURATION_MS = 6500; // Slower animation for clearer planet motion.
 
 init();
 
@@ -172,7 +172,7 @@ function updateApp() {
   ].join('\n');
 
   drawStar(starCanvas, xNow, yNow, state.p, state.u1, state.u2, state.time, FNow);
-  drawCurve(curveCanvas, currentCurve.t, currentCurve.Fld, currentCurve.Funiform, state.time, FNow);
+  drawCurve(curveCanvas, currentCurve.t, currentCurve.Fld, currentCurve.Funiform);
   drawBrightness(brightnessCanvas, state.u1, state.u2);
 }
 
@@ -352,7 +352,7 @@ function drawStar(canvas, xPlanet, yPlanet, p, u1, u2, tNow, FNow) {
   drawTitle(ctx, `t = ${tNow.toFixed(4)} d, flux = ${FNow.toFixed(5)}`);
 }
 
-function drawCurve(canvas, t, Fld, Funiform, tNow, FNow) {
+function drawCurve(canvas, t, Fld, Funiform) {
   const ctx = prepareCanvas(canvas);
   const { width, height } = canvas;
   ctx.clearRect(0, 0, width, height);
@@ -360,8 +360,8 @@ function drawCurve(canvas, t, Fld, Funiform, tNow, FNow) {
   const pad = getPlotPadding(width, height);
   const xMin = Math.min(...t);
   const xMax = Math.max(...t);
-  const yMinRaw = Math.min(...Fld, ...Funiform, FNow);
-  const yMaxRaw = Math.max(...Fld, ...Funiform, FNow);
+  const yMinRaw = Math.min(...Fld, ...Funiform);
+  const yMaxRaw = Math.max(...Fld, ...Funiform);
   const yPad = Math.max((yMaxRaw - yMinRaw) * 0.18, 0.0008);
   const yMin = yMinRaw - yPad;
   const yMax = yMaxRaw + yPad;
@@ -371,42 +371,6 @@ function drawCurve(canvas, t, Fld, Funiform, tNow, FNow) {
 
   drawLine(ctx, t, Funiform, map, 'rgba(255, 209, 102, 0.95)', 2, [6, 7]);
   drawLine(ctx, t, Fld, map, 'rgba(124, 199, 255, 1)', 2.5, []);
-
-  // Make the current-time marker very visible on the light curve.
-  const markerX = map.x(tNow);
-  const markerY = map.y(FNow);
-  const dpr = window.devicePixelRatio || 1;
-
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.78)';
-  ctx.lineWidth = 1.8 * dpr;
-  ctx.setLineDash([5 * dpr, 5 * dpr]);
-  ctx.beginPath();
-  ctx.moveTo(markerX, pad.top);
-  ctx.lineTo(markerX, height - pad.bottom);
-  ctx.stroke();
-  ctx.restore();
-
-  ctx.save();
-  ctx.shadowColor = 'rgba(255, 76, 97, 0.8)';
-  ctx.shadowBlur = 14 * dpr;
-  ctx.fillStyle = '#ff4c61';
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3.5 * dpr;
-  ctx.beginPath();
-  ctx.arc(markerX, markerY, 9 * dpr, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-  ctx.lineWidth = 1.5 * dpr;
-  ctx.beginPath();
-  ctx.arc(markerX, markerY, 15 * dpr, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-
-  drawMarkerLabel(ctx, markerX, markerY, `t = ${tNow.toFixed(4)} d`);
 
   drawLegend(ctx, pad.left + 12, pad.top + 10, [
     ['Limb darkened', 'rgba(124, 199, 255, 1)'],
@@ -490,11 +454,17 @@ function drawAxisLabels(ctx, width, height, xLabel, yLabel) {
 
 function getPlotPadding(width, height) {
   const dpr = window.devicePixelRatio || 1;
+  const cssWidth = width / dpr;
+
+  // Give the y-axis enough room so the vertical label does not overlap
+  // with the numerical tick values, especially on phone-sized screens.
+  const leftPad = cssWidth < 420 ? 92 * dpr : 104 * dpr;
+
   return {
-    left: Math.min(70 * dpr, width * 0.18),
-    right: 24 * dpr,
-    top: 24 * dpr,
-    bottom: Math.min(55 * dpr, height * 0.22)
+    left: Math.min(leftPad, width * 0.34),
+    right: 26 * dpr,
+    top: 26 * dpr,
+    bottom: Math.min(60 * dpr, height * 0.24)
   };
 }
 
@@ -521,7 +491,8 @@ function drawPlotFrame(ctx, width, height, pad, xMin, xMax, yMin, yMax, xLabel, 
   ctx.fillText(xLabel, pad.left + plotW / 2, height - pad.bottom + 30 * dpr);
 
   ctx.save();
-  ctx.translate(16 * dpr, pad.top + plotH / 2);
+  ctx.textBaseline = 'middle';
+  ctx.translate(18 * dpr, pad.top + plotH / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillText(yLabel, 0, 0);
   ctx.restore();
@@ -538,7 +509,7 @@ function drawPlotFrame(ctx, width, height, pad, xMin, xMax, yMin, yMax, xLabel, 
     ctx.moveTo(pad.left, y);
     ctx.lineTo(width - pad.right, y);
     ctx.stroke();
-    ctx.fillText(val.toFixed(4), pad.left - 8 * dpr, y);
+    ctx.fillText(val.toFixed(4), pad.left - 14 * dpr, y);
   }
 
   ctx.textAlign = 'center';
@@ -568,36 +539,6 @@ function drawLine(ctx, xValues, yValues, map, color, width, dash) {
     else ctx.lineTo(x, y);
   }
   ctx.stroke();
-  ctx.restore();
-}
-
-function drawMarkerLabel(ctx, x, y, text) {
-  const dpr = window.devicePixelRatio || 1;
-  const paddingX = 8 * dpr;
-  const paddingY = 5 * dpr;
-  ctx.save();
-  ctx.font = `${12 * dpr}px ui-sans-serif, system-ui`;
-
-  const label = `Current marker  ${text}`;
-  const textWidth = ctx.measureText(label).width;
-  const boxW = textWidth + paddingX * 2;
-  const boxH = 24 * dpr;
-
-  let boxX = x + 12 * dpr;
-  let boxY = y - boxH - 12 * dpr;
-  if (boxX + boxW > ctx.canvas.width - 8 * dpr) boxX = x - boxW - 12 * dpr;
-  if (boxY < 8 * dpr) boxY = y + 14 * dpr;
-
-  ctx.fillStyle = 'rgba(8, 13, 25, 0.90)';
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-  ctx.lineWidth = 1 * dpr;
-  roundRect(ctx, boxX, boxY, boxW, boxH, 7 * dpr);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(label, boxX + paddingX, boxY + boxH / 2);
   ctx.restore();
 }
 
