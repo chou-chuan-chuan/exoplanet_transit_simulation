@@ -47,6 +47,8 @@ let animationId = null;
 let currentCurve = null;
 let redrawScheduled = false;
 
+const ANIMATION_DURATION_MS = 6500; // Slower animation so the light-curve marker stays visible longer.
+
 init();
 
 function init() {
@@ -202,7 +204,7 @@ function toggleAnimation() {
 
   playBtn.textContent = 'Stop animation';
   const startTime = performance.now();
-  const duration = 2600;
+  const duration = ANIMATION_DURATION_MS;
   const start = -state.tRange;
   const end = state.tRange;
 
@@ -370,15 +372,41 @@ function drawCurve(canvas, t, Fld, Funiform, tNow, FNow) {
   drawLine(ctx, t, Funiform, map, 'rgba(255, 209, 102, 0.95)', 2, [6, 7]);
   drawLine(ctx, t, Fld, map, 'rgba(124, 199, 255, 1)', 2.5, []);
 
+  // Make the current-time marker very visible on the light curve.
+  const markerX = map.x(tNow);
+  const markerY = map.y(FNow);
+  const dpr = window.devicePixelRatio || 1;
+
   ctx.save();
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#03101f';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.78)';
+  ctx.lineWidth = 1.8 * dpr;
+  ctx.setLineDash([5 * dpr, 5 * dpr]);
   ctx.beginPath();
-  ctx.arc(map.x(tNow), map.y(FNow), 5, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(markerX, pad.top);
+  ctx.lineTo(markerX, height - pad.bottom);
   ctx.stroke();
   ctx.restore();
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(255, 76, 97, 0.8)';
+  ctx.shadowBlur = 14 * dpr;
+  ctx.fillStyle = '#ff4c61';
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 3.5 * dpr;
+  ctx.beginPath();
+  ctx.arc(markerX, markerY, 9 * dpr, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.lineWidth = 1.5 * dpr;
+  ctx.beginPath();
+  ctx.arc(markerX, markerY, 15 * dpr, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  drawMarkerLabel(ctx, markerX, markerY, `t = ${tNow.toFixed(4)} d`);
 
   drawLegend(ctx, pad.left + 12, pad.top + 10, [
     ['Limb darkened', 'rgba(124, 199, 255, 1)'],
@@ -541,6 +569,51 @@ function drawLine(ctx, xValues, yValues, map, color, width, dash) {
   }
   ctx.stroke();
   ctx.restore();
+}
+
+function drawMarkerLabel(ctx, x, y, text) {
+  const dpr = window.devicePixelRatio || 1;
+  const paddingX = 8 * dpr;
+  const paddingY = 5 * dpr;
+  ctx.save();
+  ctx.font = `${12 * dpr}px ui-sans-serif, system-ui`;
+
+  const label = `Current marker  ${text}`;
+  const textWidth = ctx.measureText(label).width;
+  const boxW = textWidth + paddingX * 2;
+  const boxH = 24 * dpr;
+
+  let boxX = x + 12 * dpr;
+  let boxY = y - boxH - 12 * dpr;
+  if (boxX + boxW > ctx.canvas.width - 8 * dpr) boxX = x - boxW - 12 * dpr;
+  if (boxY < 8 * dpr) boxY = y + 14 * dpr;
+
+  ctx.fillStyle = 'rgba(8, 13, 25, 0.90)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.lineWidth = 1 * dpr;
+  roundRect(ctx, boxX, boxY, boxW, boxH, 7 * dpr);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, boxX + paddingX, boxY + boxH / 2);
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + w - radius, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+  ctx.lineTo(x + w, y + h - radius);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+  ctx.lineTo(x + radius, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
 }
 
 function drawLegend(ctx, x, y, items) {
