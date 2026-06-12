@@ -1,64 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive exoplanet transit light-curve simulator with quadratic limb darkening.">
   <title>Exoplanet Transit Visual Simulator</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="app-header">
+  <header class="site-header">
     <div>
+      <p class="eyebrow">Interactive astronomy simulation</p>
       <h1>Exoplanet Transit Visual Simulator</h1>
-      <p>Interactive limb-darkened transit model adapted from the MATLAB app.</p>
+      <p class="subtitle">Adjust the orbital and limb-darkening parameters to explore the transit geometry and normalized light curve.</p>
     </div>
   </header>
 
   <main class="app-shell">
-    <section class="control-card">
-      <h2>Simulation Controls</h2>
+    <aside class="control-panel" aria-label="Simulation controls">
+      <section class="panel-section preset-section">
+        <label for="caseSelect" class="section-label">Parameter set</label>
+        <select id="caseSelect" aria-label="Select parameter case"></select>
+      </section>
 
-      <label class="control-row select-row">
-        <span>Parameter set</span>
-        <select id="caseSelect"></select>
-      </label>
-
-      <div id="controls"></div>
+      <section class="panel-section">
+        <h2>Simulation controls</h2>
+        <div id="controls" class="controls"></div>
+      </section>
 
       <div class="button-row">
-        <button id="playBtn" type="button">Play animation</button>
-        <button id="resetBtn" type="button">Reset to selected case</button>
+        <button id="playBtn" type="button" class="primary-button">Play animation</button>
+        <button id="resetBtn" type="button" class="secondary-button">Reset selected case</button>
       </div>
 
-      <div id="status" class="status">Status: ready</div>
-      <pre id="paramBox" class="param-box">Parameters will appear here.</pre>
+      <p id="status" class="status" role="status" aria-live="polite">Status: ready</p>
+      <pre id="paramBox" class="parameter-box" aria-label="Current parameter values"></pre>
 
-      <p class="note">
-        Tip: Larger inclination means the planet crosses closer to the stellar center.
-        Smaller inclination gives a larger impact parameter.
+      <p class="reset-note">
+        Reset restores every parameter to the selected case defaults, including inclination,
+        annuli count, time range, and frame time.
       </p>
-    </section>
+    </aside>
 
-    <section class="plot-grid">
-      <article class="plot-card large-card">
-        <h2>Visual transit geometry</h2>
-        <canvas id="starCanvas"></canvas>
+    <section class="visual-panel" aria-label="Transit visualizations">
+      <article class="plot-card square-card">
+        <div class="card-heading">
+          <h2>Visual transit geometry</h2>
+          <span>1:1 view</span>
+        </div>
+        <div class="square-canvas-wrap">
+          <canvas id="starCanvas" aria-label="Visual transit geometry"></canvas>
+        </div>
       </article>
 
-      <article class="plot-card">
-        <h2>Transit light curve</h2>
-        <canvas id="curveCanvas"></canvas>
+      <article class="plot-card square-card">
+        <div class="card-heading">
+          <h2>Transit light curve</h2>
+          <span>1:1 view</span>
+        </div>
+        <div class="square-canvas-wrap">
+          <canvas id="curveCanvas" aria-label="Transit light curve"></canvas>
+        </div>
       </article>
 
-      <article class="plot-card">
-        <h2>Limb-darkening profile</h2>
-        <canvas id="brightnessCanvas"></canvas>
+      <article class="plot-card brightness-card">
+        <div class="card-heading">
+          <h2>Stellar brightness profile</h2>
+          <span>Quadratic limb darkening</span>
+        </div>
+        <div class="wide-canvas-wrap">
+          <canvas id="brightnessCanvas" aria-label="Stellar brightness profile"></canvas>
+        </div>
       </article>
     </section>
   </main>
 
-  <footer class="footer-note">
-    <span>Model: quadratic limb darkening and annulus integration.</span>
+  <footer class="site-footer">
+    Numerical annulus-integration model for exoplanet transit visualization.
   </footer>
 
   <script src="app.js"></script>

@@ -19,17 +19,28 @@ const controlSpecs = [
   { key: 'time', label: 'Frame time', min: -0.08, max: 0.08, step: 0.0005, unit: ' d', digits: 4 }
 ];
 
-const state = {
-  aRs: cases[0].aRs,
-  P: cases[0].P,
-  p: cases[0].p,
+const sharedDefaults = Object.freeze({
   inc: 88,
-  u1: cases[0].u1,
-  u2: cases[0].u2,
   N: 300,
   tRange: 0.08,
   time: 0
-};
+});
+
+function makeCaseState(selectedCase) {
+  return {
+    aRs: selectedCase.aRs,
+    P: selectedCase.P,
+    p: selectedCase.p,
+    inc: sharedDefaults.inc,
+    u1: selectedCase.u1,
+    u2: selectedCase.u2,
+    N: sharedDefaults.N,
+    tRange: sharedDefaults.tRange,
+    time: sharedDefaults.time
+  };
+}
+
+const state = makeCaseState(cases[0]);
 
 const controlsDiv = document.getElementById('controls');
 const caseSelect = document.getElementById('caseSelect');
@@ -91,8 +102,16 @@ function init() {
     valueLabels.set(spec.key, value);
   }
 
-  caseSelect.addEventListener('change', loadSelectedCase);
-  resetBtn.addEventListener('click', loadSelectedCase);
+  caseSelect.addEventListener('change', () => loadSelectedCase());
+
+  // Prevent a button inside a <form> from submitting the page or invoking
+  // the browser's native form-reset behavior.
+  resetBtn.type = 'button';
+  resetBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    loadSelectedCase();
+  });
+
   playBtn.addEventListener('click', toggleAnimation);
   window.addEventListener('resize', scheduleUpdate);
 
@@ -100,14 +119,24 @@ function init() {
   updateApp();
 }
 
+function stopAnimation() {
+  if (animationId !== null) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+  playBtn.textContent = 'Play animation';
+}
+
 function loadSelectedCase() {
+  stopAnimation();
+
   const selected = cases.find((item) => item.name === caseSelect.value) || cases[0];
-  state.aRs = selected.aRs;
-  state.P = selected.P;
-  state.p = selected.p;
-  state.u1 = selected.u1;
-  state.u2 = selected.u2;
-  state.time = 0;
+  const defaults = makeCaseState(selected);
+
+  // Replace every adjustable parameter, not only the five case-specific ones.
+  // This restores inclination, annuli count, time range, and frame time too.
+  Object.assign(state, defaults);
+
   syncInputs();
   currentCurve = null;
   updateApp();
