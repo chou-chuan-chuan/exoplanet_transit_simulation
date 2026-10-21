@@ -57,8 +57,15 @@ const valueLabels = new Map();
 let animationId = null;
 let currentCurve = null;
 let redrawScheduled = false;
+let starRasterCache = null;
 
 const ANIMATION_DURATION_MS = 6500; // Slower animation for clearer planet motion.
+const PLOT_COLORS = Object.freeze({
+  limbDarkened: 'rgba(218, 237, 255, 1)',
+  uniformDisk: 'rgba(255, 235, 199, 0.98)',
+  currentPoint: '#f3a8ba',
+  currentPointOutline: '#ffe8ee'
+});
 
 init();
 
@@ -89,8 +96,17 @@ function init() {
     value.className = 'value-label';
 
     input.addEventListener('input', () => {
+      if (animationId !== null && (spec.key === 'time' || spec.key === 'tRange')) {
+        stopAnimation();
+      }
+
       const raw = Number(input.value);
-      state[spec.key] = spec.key === 'N' ? Math.round(raw) : raw;
+      if (spec.key === 'u1' || spec.key === 'u2') {
+        state[spec.key] = clampLimbDarkeningValue(spec.key, raw);
+        input.value = String(state[spec.key]);
+      } else {
+        state[spec.key] = spec.key === 'N' ? Math.round(raw) : raw;
+      }
       if (spec.key === 'tRange') clampTimeSlider();
       if (spec.key !== 'time') currentCurve = null;
       scheduleUpdate();
@@ -117,6 +133,10 @@ function init() {
 
   clampTimeSlider();
   updateApp();
+
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(scheduleUpdate);
+  }
 }
 
 function stopAnimation() {
@@ -148,6 +168,11 @@ function syncInputs() {
     if (input) input.value = String(state[spec.key]);
   }
   clampTimeSlider();
+}
+
+function clampLimbDarkeningValue(key, value) {
+  const otherKey = key === 'u1' ? 'u2' : 'u1';
+  return Math.max(0, Math.min(value, 1 - state[otherKey]));
 }
 
 function clampTimeSlider() {
@@ -182,45 +207,79 @@ function updateApp() {
   const xNow = state.aRs * Math.sin(phiNow);
   const yNow = state.aRs * Math.cos(phiNow) * Math.cos(i);
   const zNow = Math.sqrt(xNow * xNow + yNow * yNow);
-  const FNow = transitFluxAnnulus([zNow], state.p, state.u1, state.u2, state.N)[0];
+  const planetInFront = Math.cos(phiNow) >= 0;
+  const FNow = planetInFront
+    ? transitFluxAnnulus([zNow], state.p, state.u1, state.u2, state.N)[0]
+    : 1;
   const b = state.aRs * Math.cos(i);
   const depth = (1 - Math.min(...currentCurve.Fld)) * 100;
   const transitPossible = b < 1 + state.p;
+  const duration = calculateTransitDuration();
 
   statusEl.textContent = transitPossible
-    ? 'Status: transit possible'
+    ? `Status: transit possible · planet ${planetInFront ? 'in front' : 'behind star'}`
     : 'Status: no transit for this inclination';
   statusEl.classList.toggle('warning', !transitPossible);
 
   paramBox.textContent = [
     `a/Rs = ${state.aRs.toFixed(3)}    P = ${state.P.toFixed(3)} d`,
     `Rp/Rs = ${state.p.toFixed(4)}    i = ${state.inc.toFixed(2)} deg`,
-    `u1 = ${state.u1.toFixed(4)}       u2 = ${state.u2.toFixed(4)}`,
-    `Impact b = ${b.toFixed(3)}   depth = ${depth.toFixed(3)} %`,
+    `u1 = ${state.u1.toFixed(4)}       u2 = ${state.u2.toFixed(4)}   (u1 + u2 ≤ 1)`,
+    `Impact b = ${b.toFixed(3)}   depth = ${depth.toFixed(3)} % (${Math.round(depth * 10000)} ppm)`,
+    `T14 = ${duration === null ? 'n/a' : `${(duration * 24).toFixed(3)} h`}`,
     `t = ${state.time.toFixed(4)} d    flux = ${FNow.toFixed(5)}`
   ].join('\n');
 
-  drawStar(starCanvas, xNow, yNow, state.p, state.u1, state.u2, state.time, FNow);
-  drawCurve(curveCanvas, currentCurve.t, currentCurve.Fld, currentCurve.Funiform, state.time, FNow);
+  drawStar(starCanvas, xNow, yNow, state.p, state.u1, state.u2, state.time, FNow, planetInFront);
+  drawCurve(
+    curveCanvas,
+    currentCurve.t,
+    currentCurve.Fld,
+    currentCurve.Funiform,
+    state.time,
+    FNow,
+    duration
+  );
   drawBrightness(brightnessCanvas, state.u1, state.u2);
 }
 
 function calculateCurve() {
-  const pointCount = 420;
+  // An odd sample count places an exact point at t = 0 (mid-transit).
+  const pointCount = 421;
   const t = linspace(-state.tRange, state.tRange, pointCount);
   const i = deg2rad(state.inc);
-  const z = t.map((tt) => {
+  const geometry = t.map((tt) => {
     const phi = 2 * Math.PI * tt / state.P;
-    return state.aRs * Math.sqrt(
-      Math.sin(phi) ** 2 + Math.cos(phi) ** 2 * Math.cos(i) ** 2
-    );
+    return {
+      inFront: Math.cos(phi) >= 0,
+      z: state.aRs * Math.sqrt(
+        Math.sin(phi) ** 2 + Math.cos(phi) ** 2 * Math.cos(i) ** 2
+      )
+    };
   });
+  const z = geometry.map((point) => point.z);
+  const limbDarkened = transitFluxAnnulus(z, state.p, state.u1, state.u2, state.N);
+  const uniform = transitFluxAnnulus(z, state.p, 0, 0, state.N);
 
   return {
     t,
-    Fld: transitFluxAnnulus(z, state.p, state.u1, state.u2, state.N),
-    Funiform: transitFluxAnnulus(z, state.p, 0, 0, state.N)
+    // Projected overlap on the far side is an occultation of the planet,
+    // not a stellar transit, so it must not reduce the stellar flux.
+    Fld: limbDarkened.map((flux, index) => geometry[index].inFront ? flux : 1),
+    Funiform: uniform.map((flux, index) => geometry[index].inFront ? flux : 1)
   };
+}
+
+function calculateTransitDuration() {
+  const i = deg2rad(state.inc);
+  const b = state.aRs * Math.cos(i);
+  if (b >= 1 + state.p) return null;
+
+  const denominator = state.aRs * Math.sin(i);
+  if (denominator <= 0) return null;
+  const chord = Math.sqrt(Math.max(0, (1 + state.p) ** 2 - b ** 2));
+  const argument = Math.max(-1, Math.min(1, chord / denominator));
+  return (state.P / Math.PI) * Math.asin(argument);
 }
 
 function toggleAnimation() {
@@ -257,8 +316,10 @@ function toggleAnimation() {
 
 function transitFluxAnnulus(zArray, p, u1, u2, N) {
   const n = Math.max(50, Math.round(N));
-  const r = linspace(0, 1, n);
-  const dr = r[1] - r[0];
+  const dr = 1 / n;
+  // Midpoint annuli avoid assigning finite area to r = 0 or sampling the
+  // singular stellar edge directly, which reduces the integration bias.
+  const r = Array.from({ length: n }, (_, index) => (index + 0.5) * dr);
   const intensity = new Array(n);
   const annulusArea = new Array(n);
   let totalFlux = 0;
@@ -277,16 +338,20 @@ function transitFluxAnnulus(zArray, p, u1, u2, N) {
 
   for (let j = 0; j < zArray.length; j += 1) {
     const z = zArray[j];
+
+    if (z >= 1 + p) {
+      F[j] = 1;
+      continue;
+    }
+
     let blockedFlux = 0;
 
     for (let k = 0; k < n; k += 1) {
       const rk = r[k];
       let W = 0;
 
-      if (z === 0) {
+      if (z < Number.EPSILON) {
         W = rk <= p ? 1 : 0;
-      } else if (rk === 0) {
-        W = z < p ? 1 : 0;
       } else if (rk < Math.abs(z - p) || rk > z + p) {
         W = rk < p - z ? 1 : 0;
       } else {
@@ -304,7 +369,7 @@ function transitFluxAnnulus(zArray, p, u1, u2, N) {
   return F;
 }
 
-function drawStar(canvas, xPlanet, yPlanet, p, u1, u2, tNow, FNow) {
+function drawStar(canvas, xPlanet, yPlanet, p, u1, u2, tNow, FNow, planetInFront) {
   const ctx = prepareCanvas(canvas);
   const { width, height } = canvas;
   ctx.clearRect(0, 0, width, height);
@@ -320,34 +385,18 @@ function drawStar(canvas, xPlanet, yPlanet, p, u1, u2, tNow, FNow) {
   const toY = (y) => height - ((y - yMin) / (yMax - yMin)) * height;
   const scaleX = width / (xMax - xMin);
   const scaleY = height / (yMax - yMin);
-
-  drawGrid(ctx, width, height, 6, 5);
-
-  const img = ctx.createImageData(width, height);
-  const data = img.data;
   const cx = toX(0);
   const cy = toY(0);
   const rx = scaleX;
   const ry = scaleY;
 
-  for (let py = 0; py < height; py += 1) {
-    for (let px = 0; px < width; px += 1) {
-      const x = (px - cx) / rx;
-      const y = -(py - cy) / ry;
-      const r = Math.sqrt(x * x + y * y);
-      if (r <= 1) {
-        const mu = Math.sqrt(Math.max(0, 1 - r * r));
-        const I = 1 - u1 * (1 - mu) - u2 * (1 - mu) ** 2;
-        const color = hotColor(I);
-        const idx = (py * width + px) * 4;
-        data[idx] = color[0];
-        data[idx + 1] = color[1];
-        data[idx + 2] = color[2];
-        data[idx + 3] = 255;
-      }
-    }
+  drawGrid(ctx, width, height, 6, 5);
+
+  if (!planetInFront) {
+    drawPlanet(ctx, toX(xPlanet), toY(yPlanet), p * scaleX, p * scaleY, false);
   }
-  ctx.putImageData(img, 0, 0);
+
+  ctx.drawImage(getStarRaster(width, height, cx, cy, rx, ry, u1, u2), 0, 0);
 
   ctx.save();
   ctx.strokeStyle = 'rgba(255,255,255,0.96)';
@@ -367,21 +416,65 @@ function drawStar(canvas, xPlanet, yPlanet, p, u1, u2, tNow, FNow) {
   ctx.stroke();
   ctx.restore();
 
+  if (planetInFront) {
+    drawPlanet(ctx, toX(xPlanet), toY(yPlanet), p * scaleX, p * scaleY, true);
+  }
+
+  drawAxisLabels(ctx, width, height, 'x / Rs', 'y / Rs');
+  drawTitle(
+    ctx,
+    `t = ${tNow.toFixed(4)} d, flux = ${FNow.toFixed(5)} · ${planetInFront ? 'front' : 'behind'}`
+  );
+}
+
+function getStarRaster(width, height, cx, cy, rx, ry, u1, u2) {
+  const key = [width, height, u1.toFixed(6), u2.toFixed(6)].join(':');
+  if (starRasterCache?.key === key) return starRasterCache.canvas;
+
+  const raster = document.createElement('canvas');
+  raster.width = width;
+  raster.height = height;
+  const rasterCtx = raster.getContext('2d');
+  const img = rasterCtx.createImageData(width, height);
+  const data = img.data;
+
+  for (let py = 0; py < height; py += 1) {
+    for (let px = 0; px < width; px += 1) {
+      const x = (px - cx) / rx;
+      const y = -(py - cy) / ry;
+      const r = Math.sqrt(x * x + y * y);
+      if (r <= 1) {
+        const mu = Math.sqrt(Math.max(0, 1 - r * r));
+        const intensity = 1 - u1 * (1 - mu) - u2 * (1 - mu) ** 2;
+        const color = hotColor(intensity);
+        const idx = (py * width + px) * 4;
+        data[idx] = color[0];
+        data[idx + 1] = color[1];
+        data[idx + 2] = color[2];
+        data[idx + 3] = 255;
+      }
+    }
+  }
+
+  rasterCtx.putImageData(img, 0, 0);
+  starRasterCache = { key, canvas: raster };
+  return raster;
+}
+
+function drawPlanet(ctx, x, y, radiusX, radiusY, inFront) {
   ctx.save();
-  ctx.fillStyle = '#03040a';
-  ctx.strokeStyle = '#f4f7fb';
+  ctx.fillStyle = inFront ? '#030405' : '#111315';
+  ctx.strokeStyle = inFront ? '#f4f5f6' : 'rgba(210,214,218,0.45)';
   ctx.lineWidth = 2;
+  if (!inFront) ctx.setLineDash([5, 5]);
   ctx.beginPath();
-  ctx.ellipse(toX(xPlanet), toY(yPlanet), p * scaleX, p * scaleY, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y, radiusX, radiusY, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.restore();
-
-  drawAxisLabels(ctx, width, height, 'x / Rs', 'y / Rs');
-  drawTitle(ctx, `t = ${tNow.toFixed(4)} d, flux = ${FNow.toFixed(5)}`);
 }
 
-function drawCurve(canvas, t, Fld, Funiform, tNow, FNow) {
+function drawCurve(canvas, t, Fld, Funiform, tNow, FNow, duration) {
   const ctx = prepareCanvas(canvas);
   const { width, height } = canvas;
   ctx.clearRect(0, 0, width, height);
@@ -398,8 +491,14 @@ function drawCurve(canvas, t, Fld, Funiform, tNow, FNow) {
   const map = makeMapper(width, height, pad, xMin, xMax, yMin, yMax);
   drawPlotFrame(ctx, width, height, pad, xMin, xMax, yMin, yMax, 'Time from mid-transit (d)', 'Normalized flux');
 
-  drawLine(ctx, t, Funiform, map, 'rgba(255, 209, 102, 0.95)', 2, [6, 7]);
-  drawLine(ctx, t, Fld, map, 'rgba(124, 199, 255, 1)', 2.5, []);
+  if (duration !== null && duration / 2 <= xMax) {
+    const halfDuration = duration / 2;
+    drawVerticalGuide(ctx, map.x(-halfDuration), pad.top, height - pad.bottom);
+    drawVerticalGuide(ctx, map.x(halfDuration), pad.top, height - pad.bottom);
+  }
+
+  drawLine(ctx, t, Funiform, map, PLOT_COLORS.uniformDisk, 2, [6, 7]);
+  drawLine(ctx, t, Fld, map, PLOT_COLORS.limbDarkened, 2.5, []);
 
   // Current-time mark: red point only, without guide line, glow ring, or label.
   if (Number.isFinite(tNow) && Number.isFinite(FNow)) {
@@ -407,8 +506,8 @@ function drawCurve(canvas, t, Fld, Funiform, tNow, FNow) {
     const x = map.x(tNow);
     const y = map.y(FNow);
     ctx.save();
-    ctx.fillStyle = '#ff3b4f';
-    ctx.strokeStyle = '#ffffff';
+    ctx.fillStyle = PLOT_COLORS.currentPoint;
+    ctx.strokeStyle = PLOT_COLORS.currentPointOutline;
     ctx.lineWidth = 2.4 * dpr;
     ctx.beginPath();
     ctx.arc(x, y, 7.5 * dpr, 0, Math.PI * 2);
@@ -418,8 +517,8 @@ function drawCurve(canvas, t, Fld, Funiform, tNow, FNow) {
   }
 
   drawLegend(ctx, pad.left + 12, pad.top + 10, [
-    ['Limb darkened', 'rgba(124, 199, 255, 1)'],
-    ['Uniform disk', 'rgba(255, 209, 102, 0.95)']
+    ['Limb darkened', PLOT_COLORS.limbDarkened],
+    ['Uniform disk', PLOT_COLORS.uniformDisk]
   ]);
 }
 
@@ -439,7 +538,7 @@ function drawBrightness(canvas, u1, u2) {
   const yMax = 1.05;
   const map = makeMapper(width, height, pad, 0, 1, yMin, yMax);
   drawPlotFrame(ctx, width, height, pad, 0, 1, yMin, yMax, 'r / Rs', 'Relative intensity');
-  drawLine(ctx, r, I, map, 'rgba(124, 199, 255, 1)', 2.5, []);
+  drawLine(ctx, r, I, map, PLOT_COLORS.limbDarkened, 2.5, []);
 }
 
 function prepareCanvas(canvas) {
@@ -452,7 +551,7 @@ function prepareCanvas(canvas) {
     canvas.height = height;
   }
   const ctx = canvas.getContext('2d');
-  ctx.font = `${13 * dpr}px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif`;
+  ctx.font = `${15 * dpr}px "QuanFangwei Supplement Web", "Noto Serif TC", serif`;
   return ctx;
 }
 
@@ -587,25 +686,23 @@ function drawLine(ctx, xValues, yValues, map, color, width, dash) {
   ctx.restore();
 }
 
-function roundRect(ctx, x, y, w, h, r) {
-  const radius = Math.min(r, w / 2, h / 2);
+function drawVerticalGuide(ctx, x, top, bottom) {
+  const dpr = window.devicePixelRatio || 1;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+  ctx.lineWidth = dpr;
+  ctx.setLineDash([3 * dpr, 5 * dpr]);
   ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + w - radius, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-  ctx.lineTo(x + w, y + h - radius);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-  ctx.lineTo(x + radius, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
+  ctx.moveTo(x, top);
+  ctx.lineTo(x, bottom);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawLegend(ctx, x, y, items) {
   const dpr = window.devicePixelRatio || 1;
   ctx.save();
-  ctx.font = `${12 * dpr}px ui-sans-serif, system-ui`;
+  ctx.font = `${14 * dpr}px "QuanFangwei Supplement Web", "Noto Serif TC", serif`;
   ctx.textBaseline = 'middle';
   items.forEach(([label, color], idx) => {
     const yy = y + idx * 18 * dpr;
@@ -623,9 +720,11 @@ function drawLegend(ctx, x, y, items) {
 
 function hotColor(I) {
   const v = Math.max(0, Math.min(1, I));
-  const r = Math.round(255 * Math.min(1, 0.45 + 0.7 * v));
-  const g = Math.round(255 * Math.max(0, Math.min(1, 1.15 * v - 0.15)));
-  const b = Math.round(255 * Math.max(0, 0.28 * v - 0.04));
+  // Warm, low-saturation stellar palette: orange-white at the dim limb and
+  // yellow-white at the bright center, while preserving the intensity slope.
+  const r = Math.round(232 + 23 * v);
+  const g = Math.round(138 + 105 * v);
+  const b = Math.round(68 + 108 * v);
   return [r, g, b];
 }
 

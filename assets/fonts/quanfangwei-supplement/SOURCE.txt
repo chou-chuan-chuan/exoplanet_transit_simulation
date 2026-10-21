@@ -1,0 +1,8 @@
+QuanFangwei Supplement Web
+
+Source used for this project:
+https://chou-chuan-chuan.github.io/pastexam_supabase_google_login/assets/fonts/quanfangwei-supplement/QuanFangweiSupplementScript-Regular.woff2
+
+The font was copied from the public site supplied by the project owner so the
+simulator can use the same webfont locally without a runtime dependency on the
+reference website.

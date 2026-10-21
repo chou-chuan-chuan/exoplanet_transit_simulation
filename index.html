@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Interactive exoplanet transit light-curve simulator with quadratic limb darkening.">
   <title>Exoplanet Transit Visual Simulator</title>
+  <link rel="preload" href="assets/fonts/quanfangwei-supplement/QuanFangweiSupplementScript-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -38,7 +39,8 @@
 
       <p class="reset-note">
         Reset restores every parameter to the selected case defaults, including inclination,
-        annuli count, time range, and frame time.
+        annuli count, time range, and frame time. The model assumes a circular orbit; limb-darkening
+        controls are constrained to keep the stellar intensity non-negative.
       </p>
     </aside>
 
@@ -76,7 +78,7 @@
   </main>
 
   <footer class="site-footer">
-    Numerical annulus-integration model for exoplanet transit visualization.
+    Circular-orbit transit model · midpoint annulus integration · quadratic limb darkening
   </footer>
 
   <script src="app.js"></script>
