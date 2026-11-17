@@ -427,3 +427,21 @@ canvas {
     animation-iteration-count: 1 !important;
   }
 }
+
+[hidden] { display: none !important; }
+.mode-switch {
+  width: min(1480px, calc(100% - 40px));
+  margin: 20px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.event-buttons { margin-top: 8px; padding-top: 0; border-top: 0; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+#binaryPanel .parameter-box { white-space: pre-wrap; overflow-wrap: anywhere; }
+#binaryPanel .control-row { grid-template-columns: 92px minmax(0, 1fr) 95px; }
+@media (max-width: 480px) {
+  .mode-switch { width: calc(100% - 20px); }
+  .mode-switch button { width: 100%; }
+  #binaryPanel .control-row { grid-template-columns: 76px minmax(0, 1fr) 82px; }
+}
