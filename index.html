@@ -20,9 +20,10 @@
   </header>
 
   <nav class="mode-switch" aria-label="Simulation mode">
-    <button id="transitMode" class="primary-button" type="button" aria-pressed="true">Exoplanet transit · 系外行星凌日</button>
-    <button id="binaryMode" class="secondary-button" type="button" aria-pressed="false">Binary stars · 雙星與食雙星</button>
-  </nav>
+    <button id="transitMode" class="primary-button" type="button" aria-pressed="true">Planetary Transit</button>
+    <button id="binaryMode" class="secondary-button" type="button" aria-pressed="false">Binary Star Orbit</button>
+  <button id="eclipseMode" class="secondary-button" type="button" aria-pressed="false">Eclipsing Binary</button></nav>
+  <details id="physics" class="physics"><summary>Physics &amp; Equations</summary><div id="equations"></div></details>
   <main id="transitPanel" class="app-shell">
     <aside class="control-panel" aria-label="Simulation controls">
       <section class="panel-section preset-section">
@@ -83,47 +84,23 @@
     </section>
   </main>
 
-  <section id="binaryPanel" class="app-shell" lang="zh-Hant" aria-label="雙星互動模擬" hidden>
-    <aside class="control-panel" aria-label="雙星控制">
-      <section class="panel-section">
-        <label for="binaryPreset" class="section-label">雙星範例</label>
-        <select id="binaryPreset">
-          <option value="standard">主食與次食 · 不同溫度</option>
-          <option value="equal">等深食 · 相同雙星</option>
-          <option value="grazing">掠食 · 邊緣交疊</option>
-          <option value="none">無食 · 傾角 60°</option>
-        </select>
+  <section id="binaryPanel" class="app-shell" aria-label="Binary simulation" hidden>
+    <aside class="control-panel" aria-label="Binary controls">
+      <section class="panel-section"><label for="binaryPreset">Illustrative preset</label>
+        <select id="binaryPreset"><option value="standard">Unequal brightness</option><option value="equal">Equal-mass twins</option><option value="grazing">Grazing eclipse</option><option value="eccentric">Eccentric binary</option><option value="none">Non-eclipsing binary</option></select>
       </section>
-      <section class="panel-section"><h2>物理參數</h2><div id="binaryControls" class="controls"></div></section>
-      <div class="button-row">
-        <button id="binaryPlay" type="button" class="primary-button">播放動畫</button>
-        <button id="binaryReset" type="button" class="secondary-button">重設範例</button>
-      </div>
-      <div class="button-row event-buttons">
-        <button id="primaryJump" type="button" class="secondary-button">主食中心</button>
-        <button id="secondaryJump" type="button" class="secondary-button">次食中心</button>
-      </div>
-      <p id="binaryStatus" class="status" role="status" aria-live="polite"></p>
-      <pre id="binaryParams" class="parameter-box" aria-label="雙星衍生物理量"></pre>
-      <p class="reset-note">圓形軌道（e = 0）、球形恆星、均勻表面亮度；光通量為全波段黑體近似（∝ R²T⁴），非特定濾鏡觀測。未含臨邊昏暗、反照、潮汐形變、星斑或第三光。質量、半徑與溫度可獨立調整，不強制符合恆星演化關係。</p>
-      <p class="reset-note">i = 0° 為正面俯視；i = 90° 為側向觀測。相位 0 是兩星並排，相位 0.25 為星 2 在前、0.75 為星 1 在前。主食定義為較深的食；等溫時兩次食等深。</p>
+      <section class="panel-section"><h2>Physical parameters</h2><div id="binaryControls" class="controls"></div></section>
+      <details class="panel-section"><summary>Advanced Physics</summary><p>All options below are implemented. Each can be configured independently. Defaults are circular and uniform. Coefficients are illustrative, not atmosphere fits.</p><div id="advancedControls"></div><p id="advancedError" role="alert"></p><p>Future / not implemented: ellipsoidal variations, reflection, Doppler beaming, spots, relativistic effects and interacting binaries.</p></details>
+      <div class="button-row"><button id="binaryPlay" class="primary-button">Play animation</button><button id="binaryReset" class="secondary-button">Reset preset</button></div>
+      <div class="button-row"><button id="primaryJump" class="secondary-button">Primary eclipse center</button><button id="secondaryJump" class="secondary-button">Secondary eclipse center</button></div>
+      <p id="binaryStatus" class="status" role="status"></p><pre id="binaryParams" class="parameter-box" aria-label="Derived parameters"></pre>
+      <p class="reset-note">Detached spherical stars; bolometric brightness scales as R²T⁴. Mass, radius and temperature are independent inputs. Phase zero is periastron (the +x direction for a circular orbit with zero periapsis angle). Inclination 0° is face-on and 90° is edge-on. Primary means the deeper instantaneous eclipse; equal-depth events have no unique primary.</p>
     </aside>
-    <section class="visual-panel" aria-label="雙星同步視圖">
-      <article class="plot-card square-card">
-        <div class="card-heading"><h2>軌道俯視</h2><span>垂直軌道平面</span></div>
-        <div class="square-canvas-wrap"><canvas id="binaryTop" aria-label="兩星繞質心的軌道俯視圖"></canvas></div>
-        <p class="reset-note">十字為質心；星 1 淺藍、星 2 琥珀色。圓盤和軌道使用相同比例。</p>
-      </article>
-      <article class="plot-card square-card">
-        <div class="card-heading"><h2>觀測者視角／側視</h2><span>天空平面投影</span></div>
-        <div class="square-canvas-wrap"><canvas id="binarySky" aria-label="依傾角投影與前後遮擋的雙星圖"></canvas></div>
-        <p class="reset-note">視線指向畫面內；較近的星繪於前方。顏色辨識星別，不代表實際溫度色彩。</p>
-      </article>
-      <article class="plot-card brightness-card">
-        <div class="card-heading"><h2>雙星光變曲線</h2><span>完整週期 · 食外通量 = 1</span></div>
-        <div class="wide-canvas-wrap"><canvas id="binaryCurve" aria-label="完整週期的主食與次食光變曲線"></canvas></div>
-        <p id="binaryCurveDescription" class="reset-note"></p>
-      </article>
+    <section class="visual-panel" aria-label="Synchronized binary views">
+      <article class="plot-card square-card"><div class="card-heading"><h2>Orbital plane</h2><span>Barycentric motion</span></div><div class="square-canvas-wrap"><canvas id="binaryTop" aria-label="Orbit seen perpendicular to the orbital plane"></canvas></div><p class="reset-note">Cross: barycenter. Star 1: blue; star 2: amber. Radii and orbits share the same scale. Colors identify stars, not temperatures.</p></article>
+      <article class="plot-card square-card"><div class="card-heading"><h2>Observer view</h2><span>Sky-plane projection</span></div><div class="square-canvas-wrap"><canvas id="binarySky" aria-label="Sky-plane projection with foreground occultation"></canvas></div><p class="reset-note">Positive z points toward the observer. The nearer disk is drawn on top. Disk colors are schematic; limb darkening is included in photometry when enabled.</p></article>
+      <article class="plot-card brightness-card"><div class="card-heading"><h2>Binary light curve</h2><span>Out-of-eclipse flux = 1</span></div><div class="wide-canvas-wrap"><canvas id="binaryCurve" aria-label="Binary light curve versus orbital phase"></canvas></div><p id="binaryCurveDescription" class="reset-note"></p><p class="reset-note">Line and pink marker: noiseless flux, exposure averaged when enabled. Amber dots: fixed synthetic Gaussian observations when noise is enabled. Geometry and RV show the exposure midpoint.</p></article>
+      <article class="plot-card brightness-card"><div class="card-heading"><h2>Radial velocities</h2><span>Star 1 blue · star 2 amber</span></div><div class="wide-canvas-wrap"><canvas id="binaryRV" aria-label="Both stellar radial velocities versus phase"></canvas></div><p class="reset-note">Center-of-mass velocities; positive means receding. Systemic velocity is zero. No Rossiter–McLaughlin effect or exposure averaging of RV.</p></article>
     </section>
   </section>
 
@@ -131,6 +108,8 @@
     Circular-orbit transit model · midpoint annulus integration · quadratic limb darkening
   </footer>
 
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+  <script src="physics.js"></script>
   <script src="app.js"></script>
   <script src="binary-model.js"></script>
   <script src="binary-ui.js"></script>

@@ -445,3 +445,12 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   .mode-switch button { width: 100%; }
   #binaryPanel .control-row { grid-template-columns: 76px minmax(0, 1fr) 82px; }
 }
+.physics { width: min(1440px, calc(100% - 40px)); margin: 18px auto; padding: 18px; border: 1px solid #647184; border-radius: 12px; background: #171b22; }
+summary { cursor: pointer; font-weight: 700; font-size: 1.1rem; padding: 8px 0; }
+.physics p, .physics li { line-height: 1.7; color: #d1d8e2; }
+.physics a { color: #a8d6ff; }
+.equation { overflow-x: auto; padding: 8px; }
+.advanced-row { display: grid; grid-template-columns: 1fr 100px; align-items: center; gap: 10px; margin: 12px 0; font-size: .85rem; }
+.advanced-row input { width: 100%; color: white; background: #252b36; border: 1px solid #6b7789; padding: 7px; border-radius: 5px; }
+.toggle { display: block; margin: 18px 0 8px; }
+#advancedError { color: #ffbdad; }
