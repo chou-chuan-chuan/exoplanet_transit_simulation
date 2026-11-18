@@ -194,6 +194,7 @@ function scheduleUpdate() {
 }
 
 function updateApp() {
+  if (document.getElementById('transitPanel').hidden) return;
   for (const spec of controlSpecs) {
     const label = valueLabels.get(spec.key);
     if (!label) continue;

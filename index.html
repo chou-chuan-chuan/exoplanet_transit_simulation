@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Interactive exoplanet transit light-curve simulator with quadratic limb darkening.">
-  <title>Exoplanet Transit Visual Simulator</title>
+  <title>Transit &amp; Binary Star Visual Simulator</title>
   <link rel="icon" type="image/png" sizes="512x512" href="assets/branding/favicon.png">
   <link rel="apple-touch-icon" href="assets/branding/favicon.png">
   <link rel="preload" href="assets/fonts/quanfangwei-supplement/QuanFangweiSupplementScript-Regular.woff2" as="font" type="font/woff2" crossorigin>
@@ -14,12 +14,17 @@
   <header class="site-header">
     <div>
       <p class="eyebrow">Interactive astronomy simulation</p>
-      <h1>Exoplanet Transit Visual Simulator</h1>
+      <h1>Transit &amp; Binary Star Visual Simulator</h1>
       <p class="subtitle">Adjust the orbital and limb-darkening parameters to explore the transit geometry and normalized light curve.</p>
     </div>
   </header>
 
-  <main class="app-shell">
+  <nav class="mode-switch" aria-label="Simulation mode">
+    <button id="transitMode" class="primary-button" type="button" aria-pressed="true">Planetary Transit</button>
+    <button id="binaryMode" class="secondary-button" type="button" aria-pressed="false">Binary Star Orbit</button>
+  <button id="eclipseMode" class="secondary-button" type="button" aria-pressed="false">Eclipsing Binary</button></nav>
+  <details id="physics" class="physics"><summary>Physics &amp; Equations</summary><div id="equations"></div></details>
+  <main id="transitPanel" class="app-shell">
     <aside class="control-panel" aria-label="Simulation controls">
       <section class="panel-section preset-section">
         <label for="caseSelect" class="section-label">Parameter set</label>
@@ -79,10 +84,34 @@
     </section>
   </main>
 
+  <section id="binaryPanel" class="app-shell" aria-label="Binary simulation" hidden>
+    <aside class="control-panel" aria-label="Binary controls">
+      <section class="panel-section"><label for="binaryPreset">Illustrative preset</label>
+        <select id="binaryPreset"><option value="standard">Unequal brightness</option><option value="equal">Equal-mass twins</option><option value="grazing">Grazing eclipse</option><option value="eccentric">Eccentric binary</option><option value="none">Non-eclipsing binary</option></select>
+      </section>
+      <section class="panel-section"><h2>Physical parameters</h2><div id="binaryControls" class="controls"></div></section>
+      <details class="panel-section"><summary>Advanced Physics</summary><p>All options below are implemented. Each can be configured independently. Defaults are circular and uniform. Coefficients are illustrative, not atmosphere fits.</p><div id="advancedControls"></div><p id="advancedError" role="alert"></p><p>Future / not implemented: ellipsoidal variations, reflection, Doppler beaming, spots, relativistic effects and interacting binaries.</p></details>
+      <div class="button-row"><button id="binaryPlay" class="primary-button">Play animation</button><button id="binaryReset" class="secondary-button">Reset preset</button></div>
+      <div class="button-row"><button id="primaryJump" class="secondary-button">Primary eclipse center</button><button id="secondaryJump" class="secondary-button">Secondary eclipse center</button></div>
+      <p id="binaryStatus" class="status" role="status"></p><pre id="binaryParams" class="parameter-box" aria-label="Derived parameters"></pre>
+      <p class="reset-note">Detached spherical stars; bolometric brightness scales as R²T⁴. Mass, radius and temperature are independent inputs. Phase zero is periastron (the +x direction for a circular orbit with zero periapsis angle). Inclination 0° is face-on and 90° is edge-on. Primary means the deeper instantaneous eclipse; equal-depth events have no unique primary.</p>
+    </aside>
+    <section class="visual-panel" aria-label="Synchronized binary views">
+      <article class="plot-card square-card"><div class="card-heading"><h2>Orbital plane</h2><span>Barycentric motion</span></div><div class="square-canvas-wrap"><canvas id="binaryTop" aria-label="Orbit seen perpendicular to the orbital plane"></canvas></div><p class="reset-note">Cross: barycenter. Star 1: blue; star 2: amber. Radii and orbits share the same scale. Colors identify stars, not temperatures.</p></article>
+      <article class="plot-card square-card"><div class="card-heading"><h2>Observer view</h2><span>Sky-plane projection</span></div><div class="square-canvas-wrap"><canvas id="binarySky" aria-label="Sky-plane projection with foreground occultation"></canvas></div><p class="reset-note">Positive z points toward the observer. The nearer disk is drawn on top. Disk colors are schematic; limb darkening is included in photometry when enabled.</p></article>
+      <article class="plot-card brightness-card"><div class="card-heading"><h2>Binary light curve</h2><span>Out-of-eclipse flux = 1</span></div><div class="wide-canvas-wrap"><canvas id="binaryCurve" aria-label="Binary light curve versus orbital phase"></canvas></div><p id="binaryCurveDescription" class="reset-note"></p><p class="reset-note">Line and pink marker: noiseless flux, exposure averaged when enabled. Amber dots: fixed synthetic Gaussian observations when noise is enabled. Geometry and RV show the exposure midpoint.</p></article>
+      <article class="plot-card brightness-card"><div class="card-heading"><h2>Radial velocities</h2><span>Star 1 blue · star 2 amber</span></div><div class="wide-canvas-wrap"><canvas id="binaryRV" aria-label="Both stellar radial velocities versus phase"></canvas></div><p class="reset-note">Center-of-mass velocities; positive means receding. Systemic velocity is zero. No Rossiter–McLaughlin effect or exposure averaging of RV.</p></article>
+    </section>
+  </section>
+
   <footer class="site-footer">
     Circular-orbit transit model · midpoint annulus integration · quadratic limb darkening
   </footer>
 
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+  <script src="physics.js"></script>
   <script src="app.js"></script>
+  <script src="binary-model.js"></script>
+  <script src="binary-ui.js"></script>
 </body>
 </html>
